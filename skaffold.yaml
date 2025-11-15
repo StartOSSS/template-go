@@ -1,0 +1,89 @@
+apiVersion: skaffold/v4beta10
+kind: Config
+metadata:
+  name: template-go
+build:
+  defaultRepo: ${GAR_REPOSITORY}
+  artifacts:
+    - image: todo-app
+      context: .
+      docker:
+        dockerfile: Dockerfile
+    - image: todo-integration
+      context: integration
+      docker:
+        dockerfile: Dockerfile
+    - image: todo-k6
+      context: loadtest
+      docker:
+        dockerfile: Dockerfile
+  tagPolicy:
+    envTemplate:
+      template: "{{.IMAGE_NAME}}:{{.GIT_COMMIT}}"
+deploy:
+  cloudrun:
+    projectID: ${GCP_PROJECT}
+    region: ${GCP_REGION}
+profiles:
+  - name: minikube
+    build:
+      local:
+        push: false
+    deploy:
+      helm:
+        releases:
+          - name: todo-postgres
+            namespace: todo
+            createNamespace: true
+            repo: https://charts.bitnami.com/bitnami
+            chart: postgresql
+            version: 13.2.24
+            valuesFiles:
+              - deploy/helm-values/postgres.yaml
+          - name: todo-loki
+            namespace: observability
+            createNamespace: true
+            repo: https://grafana.github.io/helm-charts
+            chart: loki
+            valuesFiles:
+              - deploy/helm-values/loki.yaml
+          - name: todo-tempo
+            namespace: observability
+            createNamespace: true
+            repo: https://grafana.github.io/helm-charts
+            chart: tempo
+            valuesFiles:
+              - deploy/helm-values/tempo.yaml
+          - name: todo-mimir
+            namespace: observability
+            createNamespace: true
+            repo: https://grafana.github.io/helm-charts
+            chart: mimir-distributed
+            valuesFiles:
+              - deploy/helm-values/mimir.yaml
+          - name: todo-pyroscope
+            namespace: observability
+            createNamespace: true
+            repo: https://grafana.github.io/helm-charts
+            chart: pyroscope
+            valuesFiles:
+              - deploy/helm-values/pyroscope.yaml
+          - name: todo-dashboards
+            namespace: observability
+            createNamespace: true
+            chartPath: charts/observability-dashboards
+          - name: todo-grafana
+            namespace: observability
+            createNamespace: true
+            repo: https://grafana.github.io/helm-charts
+            chart: grafana
+            valuesFiles:
+              - deploy/helm-values/grafana.yaml
+          - name: todo-app
+            namespace: todo
+            createNamespace: true
+            chartPath: charts/todo-app
+            artifactOverrides:
+              appImage: todo-app
+              integrationImage: todo-integration
+              loadImage: todo-k6

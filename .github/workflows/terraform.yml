@@ -1,0 +1,26 @@
+name: Terraform
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+
+jobs:
+  plan:
+    if: ${{ secrets.GCP_SA_KEY != '' || github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Configure gcloud auth
+        if: ${{ secrets.GCP_SA_KEY != '' }}
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+      - name: Terraform plan
+        run: make plan

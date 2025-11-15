@@ -1,0 +1,26 @@
+{{- if .Values.tests.load.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "todo-app.fullname" . }}-load
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  labels:
+    {{- include "todo-app.selectorLabels" . | nindent 4 }}
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k6
+          image: {{ .Values.loadImage }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+            - name: K6_TARGET
+              value: {{ .Values.tests.load.target }}
+            - name: K6_VUS
+              value: "{{ .Values.tests.load.vus }}"
+            - name: K6_DURATION
+              value: "{{ .Values.tests.load.duration }}"
+{{- end }}

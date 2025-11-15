@@ -1,0 +1,45 @@
+fullnameOverride: ""
+replicaCount: 2
+appImage: todo-app
+integrationImage: todo-integration
+loadImage: todo-k6
+imagePullPolicy: IfNotPresent
+
+service:
+  port: 8080
+  metricsPort: 9090
+
+database:
+  secretName: todo-db
+  secretKey: url
+  url: postgres://todo:todo@todo-postgres-postgresql:5432/todo?sslmode=disable
+
+env:
+  HTTP_ADDR: :8080
+  METRICS_ADDR: :9090
+  ENVIRONMENT: local
+  SEED_DATA: "true"
+
+resources: {}
+
+livenessProbe:
+  path: /healthz
+  port: 8080
+  initialDelaySeconds: 20
+  periodSeconds: 20
+
+readinessProbe:
+  path: /healthz
+  port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+tests:
+  integration:
+    enabled: true
+    target: http://todo-app.todo.svc.cluster.local:8080
+  load:
+    enabled: true
+    target: http://todo-app.todo.svc.cluster.local:8080
+    vus: 10
+    duration: 45s

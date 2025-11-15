@@ -1,0 +1,22 @@
+{{- if .Values.tests.integration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "todo-app.fullname" . }}-integration
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  labels:
+    {{- include "todo-app.selectorLabels" . | nindent 4 }}
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: integration
+          image: {{ .Values.integrationImage }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+            - name: INTEGRATION_TARGET
+              value: {{ .Values.tests.integration.target }}
+{{- end }}

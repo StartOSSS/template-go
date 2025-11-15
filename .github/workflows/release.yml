@@ -1,0 +1,37 @@
+name: Release
+on:
+  push:
+    branches: [main]
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Determine bump
+        id: bump
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          label=patch
+          pr=$(gh api repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls --jq '.[0].number' || true)
+          if [[ -n "$pr" ]]; then
+            labels=$(gh api repos/${GITHUB_REPOSITORY}/issues/$pr/labels --jq '.[].name')
+            if grep -qi 'release:major' <<<"$labels"; then label=major; fi
+            if grep -qi 'release:minor' <<<"$labels"; then label=minor; fi
+          fi
+          echo "value=$label" >> "$GITHUB_OUTPUT"
+      - name: Bump version
+        uses: christian-draeger/increment-semantic-version@v1
+        id: version
+        with:
+          current-version: $(git tag --sort=-v:refname | head -n1 || echo 0.0.0)
+          version-fragment: ${{ steps.bump.outputs.value }}
+      - name: Create tag
+        run: |
+          git tag ${{ steps.version.outputs.new-version }}
+          git push origin ${{ steps.version.outputs.new-version }}
