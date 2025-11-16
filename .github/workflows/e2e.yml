@@ -21,7 +21,7 @@ jobs:
           kubernetes-version: v1.28.0
       - name: Skaffold deploy
         run: |
-          curl -sSL https://storage.googleapis.com/skaffold/releases/v2.11.0/skaffold-linux-amd64 -o skaffold
+          curl -sSL https://storage.googleapis.com/skaffold/releases/v2.17.0/skaffold-linux-amd64 -o skaffold
           sudo install skaffold /usr/local/bin/skaffold
           rm skaffold
           skaffold run -p minikube --tail=false
