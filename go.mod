@@ -2,8 +2,6 @@ module github.com/example/template-go
 
 go 1.24
 
-toolchain go1.24.9
-
 require (
 	github.com/bufbuild/connect-go v1.10.0
 	github.com/jackc/pgx/v5 v5.5.4
