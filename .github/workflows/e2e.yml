@@ -20,10 +20,11 @@ jobs:
         with:
           kubernetes-version: v1.28.0
       - name: Skaffold deploy
-        uses: hiberbee/github-action-skaffold@v1
-        with:
-          command: run
-          profile: minikube
+        run: |
+          curl -sSL https://storage.googleapis.com/skaffold/releases/v2.11.0/skaffold-linux-amd64 -o skaffold
+          sudo install skaffold /usr/local/bin/skaffold
+          rm skaffold
+          skaffold run -p minikube --tail=false
       - name: Helm integration tests
         run: |
           helm test todo-app -n todo --filter integration --timeout 5m
