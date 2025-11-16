@@ -19,11 +19,11 @@ jobs:
         run: go test ./...
       - name: Install container-structure-test
         run: |
-          curl -sSL https://github.com/GoogleContainerTools/container-structure-test/releases/download/v1.22.0/container-structure-test-linux-amd64 -o container-structure-test
+          curl -sSL https://github.com/GoogleContainerTools/container-structure-test/releases/download/v1.22.0/container-structure-test-linux-amd64 -o container-structure-test-linux-amd64
           curl -sSL https://github.com/GoogleContainerTools/container-structure-test/releases/download/v1.22.0/checksums.txt | grep container-structure-test-linux-amd64 > checksum.txt
           sha256sum -c checksum.txt
-          chmod +x container-structure-test
-          sudo mv container-structure-test /usr/local/bin/container-structure-test
+          chmod +x container-structure-test-linux-amd64
+          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
           rm checksum.txt
       - name: Container structure tests
         run: |
