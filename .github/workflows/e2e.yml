@@ -22,9 +22,9 @@ jobs:
       - name: Build images inside minikube
         run: |
           eval "$(minikube docker-env)"
-          docker build -t todo-app:ci .
-          docker build -t todo-integration:ci integration
-          docker build -t todo-k6:ci loadtest
+          docker build -t todo-app:ci -f Dockerfile .
+          docker build -t todo-integration:ci -f integration/Dockerfile .
+          docker build -t todo-k6:ci -f loadtest/Dockerfile .
       - name: Deploy stack with Helm
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
