@@ -27,12 +27,61 @@ jobs:
           docker build -t todo-k6:ci -f loadtest/Dockerfile .
       - name: Deploy stack with Helm
         run: |
-          helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm upgrade --install todo-postgres bitnami/postgresql \
-            --namespace todo --create-namespace \
-            --version 13.2.24 \
-            -f deploy/helm-values/postgres.yaml
-          kubectl rollout status statefulset/todo-postgres-postgresql -n todo --timeout=10m
+          kubectl create namespace todo --dry-run=client -o yaml | kubectl apply -f -
+          cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-postgres-postgresql
+  namespace: todo
+spec:
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: todo-postgres
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-postgres
+  namespace: todo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-postgres
+  template:
+    metadata:
+      labels:
+        app: todo-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_USER
+              value: todo
+            - name: POSTGRES_PASSWORD
+              value: todo
+            - name: POSTGRES_DB
+              value: todo
+          ports:
+            - containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready","-U","todo"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          emptyDir: {}
+EOF
+          kubectl rollout status deployment/todo-postgres -n todo --timeout=5m
           helm upgrade --install todo-app charts/todo-app \
             --namespace todo --create-namespace \
             --set appImage=todo-app:ci \
