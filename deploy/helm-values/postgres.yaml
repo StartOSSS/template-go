@@ -6,7 +6,7 @@ global:
       database: todo
 primary:
   persistence:
-    enabled: true
+    enabled: false
     size: 2Gi
 metrics:
   enabled: true
