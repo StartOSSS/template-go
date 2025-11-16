@@ -19,12 +19,41 @@ jobs:
         uses: medyagh/setup-minikube@v0.0.15
         with:
           kubernetes-version: v1.28.0
-      - name: Skaffold deploy
+      - name: Build images inside minikube
         run: |
-          curl -sSL https://storage.googleapis.com/skaffold/releases/v2.17.0/skaffold-linux-amd64 -o skaffold
-          sudo install skaffold /usr/local/bin/skaffold
-          rm skaffold
-          skaffold run -p minikube --tail=false
+          eval "$(minikube docker-env)"
+          docker build -t todo-app:ci .
+          docker build -t todo-integration:ci integration
+          docker build -t todo-k6:ci loadtest
+      - name: Deploy stack with Helm
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm upgrade --install todo-postgres bitnami/postgresql \
+            --namespace todo --create-namespace \
+            --version 13.2.24 -f deploy/helm-values/postgres.yaml
+          helm upgrade --install todo-loki grafana/loki \
+            --namespace observability --create-namespace \
+            -f deploy/helm-values/loki.yaml
+          helm upgrade --install todo-tempo grafana/tempo \
+            --namespace observability --create-namespace \
+            -f deploy/helm-values/tempo.yaml
+          helm upgrade --install todo-mimir grafana/mimir-distributed \
+            --namespace observability --create-namespace \
+            -f deploy/helm-values/mimir.yaml
+          helm upgrade --install todo-pyroscope grafana/pyroscope \
+            --namespace observability --create-namespace \
+            -f deploy/helm-values/pyroscope.yaml
+          helm upgrade --install todo-dashboards charts/observability-dashboards \
+            --namespace observability --create-namespace
+          helm upgrade --install todo-grafana grafana/grafana \
+            --namespace observability --create-namespace \
+            -f deploy/helm-values/grafana.yaml
+          helm upgrade --install todo-app charts/todo-app \
+            --namespace todo --create-namespace \
+            --set appImage=todo-app:ci \
+            --set integrationImage=todo-integration:ci \
+            --set loadImage=todo-k6:ci
       - name: Helm integration tests
         run: |
           helm test todo-app -n todo --filter integration --timeout 5m
