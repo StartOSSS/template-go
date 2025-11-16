@@ -43,5 +43,5 @@ jobs:
         run: |
           helm test todo-app -n todo --filter integration --timeout 5m
           helm test todo-app -n todo --filter load --timeout 10m
-      - name: Grafana smoke test
-        run: kubectl run curl --image=curlimages/curl --rm -i --restart=Never -- curl -sf http://todo-grafana.observability/api/health
+      - name: API smoke test
+        run: kubectl run curl --image=curlimages/curl --rm -i --restart=Never -- curl -sf http://todo-app.todo:8080/healthz
