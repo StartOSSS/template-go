@@ -1,6 +1,6 @@
 module github.com/example/template-go
 
-go 1.22
+go 1.24
 
 require (
 	github.com/bufbuild/connect-go v1.10.0

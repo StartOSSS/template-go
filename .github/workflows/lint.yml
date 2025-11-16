@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22.6'
+          go-version: '1.24.10'
       - name: Go mod download
         run: go mod download
       - uses: bufbuild/buf-action@v1
@@ -28,7 +28,8 @@ jobs:
           GOFLAGS: -mod=mod
         with:
           version: v1.59.1
-          args: --timeout=5m --modules-download-mode=mod --disable typecheck ./...
+          args: --timeout=5m --modules-download-mode=mod ./...
+          skip-go-installation: true
       - name: Terraform fmt
         run: terraform fmt -check -recursive || true
       - name: Shellcheck
