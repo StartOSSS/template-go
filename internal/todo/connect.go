@@ -21,11 +21,17 @@ type Handler interface {
 
 func NewConnectHandler(svc Handler, opts ...connect.HandlerOption) (string, http.Handler) {
 	mux := http.NewServeMux()
-	mux.Handle(connect.NewUnaryHandler("/"+serviceName+"/CreateTodo", svc.CreateTodo, opts...))
-	mux.Handle(connect.NewUnaryHandler("/"+serviceName+"/GetTodo", svc.GetTodo, opts...))
-	mux.Handle(connect.NewUnaryHandler("/"+serviceName+"/ListTodos", svc.ListTodos, opts...))
-	mux.Handle(connect.NewUnaryHandler("/"+serviceName+"/UpdateTodo", svc.UpdateTodo, opts...))
-	mux.Handle(connect.NewUnaryHandler("/"+serviceName+"/DeleteTodo", svc.DeleteTodo, opts...))
-	mux.Handle(connect.NewUnaryHandler("/"+serviceName+"/HealthCheck", svc.HealthCheck, opts...))
-	return "/" + serviceName + "/", mux
+	basePath := "/" + serviceName + "/"
+
+	register := func(name string, handler *connect.Handler) {
+		mux.Handle(basePath+name, handler)
+	}
+
+	register("CreateTodo", connect.NewUnaryHandler(basePath+"CreateTodo", svc.CreateTodo, opts...))
+	register("GetTodo", connect.NewUnaryHandler(basePath+"GetTodo", svc.GetTodo, opts...))
+	register("ListTodos", connect.NewUnaryHandler(basePath+"ListTodos", svc.ListTodos, opts...))
+	register("UpdateTodo", connect.NewUnaryHandler(basePath+"UpdateTodo", svc.UpdateTodo, opts...))
+	register("DeleteTodo", connect.NewUnaryHandler(basePath+"DeleteTodo", svc.DeleteTodo, opts...))
+	register("HealthCheck", connect.NewUnaryHandler(basePath+"HealthCheck", svc.HealthCheck, opts...))
+	return basePath, mux
 }

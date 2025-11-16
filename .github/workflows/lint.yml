@@ -15,6 +15,7 @@ jobs:
       - uses: bufbuild/buf-action@v1
         with:
           github_token: ${{ github.token }}
+          pr_comment: false
       - name: Go fmt
         run: test -z "$(gofmt -l .)"
       - name: GolangCI-Lint
