@@ -21,14 +21,15 @@ jobs:
           breaking: false
       - name: Go fmt
         run: test -z "$(gofmt -l .)"
-      - name: Install golangci-lint
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /tmp v1.59.1
-          sudo mv /tmp/golangci-lint /usr/local/bin/golangci-lint
       - name: GolangCI-Lint
-        run: golangci-lint run ./...
-        env:
-          GOFLAGS: -mod=mod
+        run: |
+          docker run --rm \
+            -e GOFLAGS=-mod=mod \
+            -v "$PWD":/workspace \
+            -w /workspace \
+            -v "$HOME/.cache/go-build":/root/.cache/go-build \
+            -v "$HOME/.cache/golangci-lint":/root/.cache/golangci-lint \
+            golangci/golangci-lint:v1.59.1 golangci-lint run ./...
       - name: Terraform fmt
         run: terraform fmt -check -recursive || true
       - name: Shellcheck
