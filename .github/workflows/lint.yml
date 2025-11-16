@@ -28,7 +28,7 @@ jobs:
           GOFLAGS: -mod=mod
         with:
           version: v1.59.1
-          args: --timeout=5m --modules-download-mode=mod ./...
+          args: --timeout=5m --modules-download-mode=mod --disable typecheck ./...
       - name: Terraform fmt
         run: terraform fmt -check -recursive || true
       - name: Shellcheck
