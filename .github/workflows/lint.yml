@@ -16,6 +16,7 @@ jobs:
         with:
           github_token: ${{ github.token }}
           pr_comment: false
+          breaking: false
       - name: Go fmt
         run: test -z "$(gofmt -l .)"
       - name: GolangCI-Lint

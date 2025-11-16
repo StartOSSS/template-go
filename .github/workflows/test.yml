@@ -19,8 +19,12 @@ jobs:
         run: go test ./...
       - name: Install container-structure-test
         run: |
-          go install github.com/GoogleContainerTools/container-structure-test/cmd/container-structure-test@v1.22.0
-          echo "${HOME}/go/bin" >> "$GITHUB_PATH"
+          curl -sSL https://github.com/GoogleContainerTools/container-structure-test/releases/download/v1.22.0/container-structure-test-linux-amd64 -o container-structure-test
+          curl -sSL https://github.com/GoogleContainerTools/container-structure-test/releases/download/v1.22.0/checksums.txt | grep container-structure-test-linux-amd64 > checksum.txt
+          sha256sum -c checksum.txt
+          chmod +x container-structure-test
+          sudo mv container-structure-test /usr/local/bin/container-structure-test
+          rm checksum.txt
       - name: Container structure tests
         run: |
           container-structure-test test --image ${GAR_REPOSITORY}/todo-app:latest --config structure-test.yaml || true

@@ -9,8 +9,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install osv-scanner
+        run: |
+          curl -sSL https://github.com/google/osv-scanner/releases/download/v2.2.4/osv-scanner_linux_amd64 -o osv-scanner
+          curl -sSL https://github.com/google/osv-scanner/releases/download/v2.2.4/osv-scanner_SHA256SUMS | grep osv-scanner_linux_amd64 > osv-scanner_SHA256SUMS
+          sha256sum -c osv-scanner_SHA256SUMS
+          chmod +x osv-scanner
+          sudo mv osv-scanner /usr/local/bin/osv-scanner
+          rm osv-scanner_SHA256SUMS
       - name: osv-scanner
-        uses: google/osv-scanner-action@v2.2.4
+        run: osv-scanner ./...
       - name: Syft SBOM
         uses: anchore/sbom-action@v0
       - name: Grype
