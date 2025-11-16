@@ -15,6 +15,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24.9'
+      - name: Go mod download
+        run: go mod download
       - name: Go test
         run: go test ./...
       - name: Install container-structure-test
