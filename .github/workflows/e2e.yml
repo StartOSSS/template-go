@@ -28,32 +28,17 @@ jobs:
       - name: Deploy stack with Helm
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo add grafana https://grafana.github.io/helm-charts
           helm upgrade --install todo-postgres bitnami/postgresql \
             --namespace todo --create-namespace \
-            --version 13.2.24 -f deploy/helm-values/postgres.yaml
-          helm upgrade --install todo-loki grafana/loki \
-            --namespace observability --create-namespace \
-            -f deploy/helm-values/loki.yaml
-          helm upgrade --install todo-tempo grafana/tempo \
-            --namespace observability --create-namespace \
-            -f deploy/helm-values/tempo.yaml
-          helm upgrade --install todo-mimir grafana/mimir-distributed \
-            --namespace observability --create-namespace \
-            -f deploy/helm-values/mimir.yaml
-          helm upgrade --install todo-pyroscope grafana/pyroscope \
-            --namespace observability --create-namespace \
-            -f deploy/helm-values/pyroscope.yaml
-          helm upgrade --install todo-dashboards charts/observability-dashboards \
-            --namespace observability --create-namespace
-          helm upgrade --install todo-grafana grafana/grafana \
-            --namespace observability --create-namespace \
-            -f deploy/helm-values/grafana.yaml
+            --version 13.2.24 \
+            -f deploy/helm-values/postgres.yaml \
+            --wait --timeout 10m
           helm upgrade --install todo-app charts/todo-app \
             --namespace todo --create-namespace \
             --set appImage=todo-app:ci \
             --set integrationImage=todo-integration:ci \
-            --set loadImage=todo-k6:ci
+            --set loadImage=todo-k6:ci \
+            --wait --timeout 10m
       - name: Helm integration tests
         run: |
           helm test todo-app -n todo --filter integration --timeout 5m
