@@ -18,7 +18,7 @@ jobs:
           sudo mv osv-scanner_linux_amd64 /usr/local/bin/osv-scanner
           rm osv-scanner_SHA256SUMS
       - name: osv-scanner
-        run: osv-scanner ./...
+        run: osv-scanner --recursive .
       - name: Syft SBOM
         uses: anchore/sbom-action@v0
       - name: Grype
