@@ -23,9 +23,6 @@ jobs:
         run: test -z "$(gofmt -l .)"
       - name: GolangCI-Lint
         uses: golangci/golangci-lint-action@v6
-        env:
-          GO111MODULE: on
-          GOFLAGS: -mod=mod
         with:
           version: v1.59.1
           args: --timeout=5m --modules-download-mode=mod ./...
