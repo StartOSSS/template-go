@@ -31,14 +31,14 @@ jobs:
           helm upgrade --install todo-postgres bitnami/postgresql \
             --namespace todo --create-namespace \
             --version 13.2.24 \
-            -f deploy/helm-values/postgres.yaml \
-            --wait --timeout 10m
+            -f deploy/helm-values/postgres.yaml
+          kubectl rollout status statefulset/todo-postgres-postgresql -n todo --timeout=10m
           helm upgrade --install todo-app charts/todo-app \
             --namespace todo --create-namespace \
             --set appImage=todo-app:ci \
             --set integrationImage=todo-integration:ci \
-            --set loadImage=todo-k6:ci \
-            --wait --timeout 10m
+            --set loadImage=todo-k6:ci
+          kubectl rollout status deployment/todo-app -n todo --timeout=10m
       - name: Helm integration tests
         run: |
           helm test todo-app -n todo --filter integration --timeout 5m
