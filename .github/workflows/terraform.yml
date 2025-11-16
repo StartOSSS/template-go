@@ -7,7 +7,6 @@ on:
 
 jobs:
   plan:
-    if: ${{ secrets.GCP_SA_KEY != '' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
