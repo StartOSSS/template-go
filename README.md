@@ -27,6 +27,11 @@ make bootstrap
 # 2. run the app + Postgres + grafana stack locally
 make dev
 
+> `make dev` now spins up Postgres plus the Grafana/Tempo/Prometheus trio so you
+> can validate OTLP traces + metrics locally. Each component runs with
+> single-replica, in-memory storage to keep requirements friendly for
+> single-node Minikube clusters.
+
 # 3. run unit tests
 make test
 

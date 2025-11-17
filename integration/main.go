@@ -15,7 +15,7 @@ type createTodoResponse struct {
 }
 
 func main() {
-	endpoint := env("INTEGRATION_TARGET", "http://todo-svc.todo.svc.cluster.local:8080")
+	endpoint := env("INTEGRATION_TARGET", "http://todo-app-api.todo.svc.cluster.local:8080")
 	payload := map[string]any{"title": "integration", "description": "client"}
 	body, _ := json.Marshal(payload)
 	resp, err := http.Post(endpoint+"/todo.v1.TodoService/CreateTodo", "application/json", bytes.NewReader(body))

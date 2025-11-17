@@ -22,16 +22,20 @@ type Handler interface {
 func NewConnectHandler(svc Handler, opts ...connect.HandlerOption) (string, http.Handler) {
 	mux := http.NewServeMux()
 	basePath := "/" + serviceName + "/"
+	handlerOpts := append([]connect.HandlerOption{}, opts...)
+	for _, codec := range codecsForJSON() {
+		handlerOpts = append(handlerOpts, connect.WithCodec(codec))
+	}
 
 	register := func(name string, handler *connect.Handler) {
 		mux.Handle(basePath+name, handler)
 	}
 
-	register("CreateTodo", connect.NewUnaryHandler(basePath+"CreateTodo", svc.CreateTodo, opts...))
-	register("GetTodo", connect.NewUnaryHandler(basePath+"GetTodo", svc.GetTodo, opts...))
-	register("ListTodos", connect.NewUnaryHandler(basePath+"ListTodos", svc.ListTodos, opts...))
-	register("UpdateTodo", connect.NewUnaryHandler(basePath+"UpdateTodo", svc.UpdateTodo, opts...))
-	register("DeleteTodo", connect.NewUnaryHandler(basePath+"DeleteTodo", svc.DeleteTodo, opts...))
-	register("HealthCheck", connect.NewUnaryHandler(basePath+"HealthCheck", svc.HealthCheck, opts...))
+	register("CreateTodo", connect.NewUnaryHandler(basePath+"CreateTodo", svc.CreateTodo, handlerOpts...))
+	register("GetTodo", connect.NewUnaryHandler(basePath+"GetTodo", svc.GetTodo, handlerOpts...))
+	register("ListTodos", connect.NewUnaryHandler(basePath+"ListTodos", svc.ListTodos, handlerOpts...))
+	register("UpdateTodo", connect.NewUnaryHandler(basePath+"UpdateTodo", svc.UpdateTodo, handlerOpts...))
+	register("DeleteTodo", connect.NewUnaryHandler(basePath+"DeleteTodo", svc.DeleteTodo, handlerOpts...))
+	register("HealthCheck", connect.NewUnaryHandler(basePath+"HealthCheck", svc.HealthCheck, handlerOpts...))
 	return basePath, mux
 }

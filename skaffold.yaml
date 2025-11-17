@@ -3,6 +3,10 @@ kind: Config
 metadata:
   name: template-go
 build:
+  hooks:
+    before:
+      - command:
+          - ./scripts/build-artifacts.sh
   artifacts:
     - image: todo-app
       context: .
@@ -30,44 +34,22 @@ profiles:
           - name: todo-postgres
             namespace: todo
             createNamespace: true
-            remoteChart:
-              repo: https://charts.bitnami.com/bitnami
-              chart: postgresql
-              version: 13.2.24
+            chartPath: charts/postgres
             valuesFiles:
               - deploy/helm-values/postgres.yaml
-          - name: todo-loki
-            namespace: observability
-            createNamespace: true
-            remoteChart:
-              repo: https://grafana.github.io/helm-charts
-              chart: loki
-            valuesFiles:
-              - deploy/helm-values/loki.yaml
           - name: todo-tempo
             namespace: observability
             createNamespace: true
-            remoteChart:
-              repo: https://grafana.github.io/helm-charts
-              chart: tempo
+            repo: https://grafana.github.io/helm-charts
+            remoteChart: tempo
             valuesFiles:
               - deploy/helm-values/tempo.yaml
-          - name: todo-mimir
+          - name: todo-prometheus
             namespace: observability
             createNamespace: true
-            remoteChart:
-              repo: https://grafana.github.io/helm-charts
-              chart: mimir-distributed
+            chartPath: charts/prometheus
             valuesFiles:
-              - deploy/helm-values/mimir.yaml
-          - name: todo-pyroscope
-            namespace: observability
-            createNamespace: true
-            remoteChart:
-              repo: https://grafana.github.io/helm-charts
-              chart: pyroscope
-            valuesFiles:
-              - deploy/helm-values/pyroscope.yaml
+              - deploy/helm-values/prometheus.yaml
           - name: todo-dashboards
             namespace: observability
             createNamespace: true
@@ -75,9 +57,8 @@ profiles:
           - name: todo-grafana
             namespace: observability
             createNamespace: true
-            remoteChart:
-              repo: https://grafana.github.io/helm-charts
-              chart: grafana
+            repo: https://grafana.github.io/helm-charts
+            remoteChart: grafana
             valuesFiles:
               - deploy/helm-values/grafana.yaml
           - name: todo-app
@@ -91,5 +72,5 @@ profiles:
   - name: cloudrun
     deploy:
       cloudrun:
-        projectID: ${GCP_PROJECT}
+        projectid: ${GCP_PROJECT}
         region: ${GCP_REGION}

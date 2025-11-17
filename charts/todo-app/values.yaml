@@ -5,6 +5,10 @@ integrationImage: todo-integration
 loadImage: todo-k6
 imagePullPolicy: IfNotPresent
 
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+
 service:
   port: 8080
   metricsPort: 9090
@@ -19,6 +23,8 @@ env:
   METRICS_ADDR: :9090
   ENVIRONMENT: local
   SEED_DATA: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://todo-tempo.observability.svc.cluster.local:4318
+  OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
 
 resources: {}
 
@@ -37,9 +43,9 @@ readinessProbe:
 tests:
   integration:
     enabled: true
-    target: http://todo-app.todo.svc.cluster.local:8080
+    target: http://todo-app-api.todo.svc.cluster.local:8080
   load:
     enabled: true
-    target: http://todo-app.todo.svc.cluster.local:8080
+    target: http://todo-app-api.todo.svc.cluster.local:8080
     vus: 10
     duration: 45s

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/example/template-go/internal/config"
 	"github.com/example/template-go/internal/db"
@@ -14,6 +15,7 @@ import (
 	"github.com/example/template-go/internal/todo"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
@@ -43,22 +45,42 @@ func main() {
 		}()
 	}
 
-	pool, err := db.Open(ctx, cfg.DatabaseURL)
+	const (
+		maxDBAttempts = 60
+		dbRetryDelay  = 5 * time.Second
+	)
+
+	var pool *pgxpool.Pool
+	err = retry(ctx, maxDBAttempts, dbRetryDelay, func() error {
+		var err error
+		pool, err = db.Open(ctx, cfg.DatabaseURL)
+		if err != nil {
+			logger.Warn("db open failed", "error", err)
+		}
+		return err
+	})
 	if err != nil {
 		logger.Error("db open failed", "error", err)
 		os.Exit(1)
 	}
 	defer pool.Close()
 
-	if err := db.WithConn(ctx, pool, func(conn *pgx.Conn) error {
-		if err := db.Migrate(ctx, conn); err != nil {
-			return err
+	err = retry(ctx, maxDBAttempts, dbRetryDelay, func() error {
+		err := db.WithConn(ctx, pool, func(conn *pgx.Conn) error {
+			if err := db.Migrate(ctx, conn); err != nil {
+				return err
+			}
+			if cfg.SeedData && cfg.Environment != "gcp" {
+				return db.Seed(ctx, conn)
+			}
+			return nil
+		})
+		if err != nil {
+			logger.Warn("migrate/seed retry", "error", err)
 		}
-		if cfg.SeedData && cfg.Environment != "gcp" {
-			return db.Seed(ctx, conn)
-		}
-		return nil
-	}); err != nil {
+		return err
+	})
+	if err != nil {
 		logger.Error("migrate/seed failed", "error", err)
 		os.Exit(1)
 	}
@@ -106,4 +128,19 @@ func main() {
 	if tracerShutdown != nil {
 		_ = tracerShutdown(shutdownCtx)
 	}
+}
+
+func retry(ctx context.Context, attempts int, delay time.Duration, fn func() error) error {
+	var err error
+	for i := 0; i < attempts; i++ {
+		if err = fn(); err == nil {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+	return err
 }

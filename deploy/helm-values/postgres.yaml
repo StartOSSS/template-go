@@ -1,16 +1,7 @@
-global:
-  postgresql:
-    auth:
-      username: todo
-      password: todo
-      database: todo
-primary:
-  persistence:
-    enabled: false
-    size: 2Gi
-metrics:
-  enabled: true
-  serviceMonitor:
-    enabled: false
-pgHbaConfiguration: |
-  host all all 0.0.0.0/0 md5
+credentials:
+  username: todo
+  password: todo
+  database: todo
+persistence:
+  enabled: false
+  size: 2Gi

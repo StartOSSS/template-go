@@ -4,18 +4,12 @@ datasources:
     datasources:
       - name: Prometheus
         type: prometheus
-        url: http://todo-mimir-nginx.observability.svc.cluster.local
+        url: http://todo-prometheus.observability.svc.cluster.local:9090
         access: proxy
         isDefault: true
-      - name: Loki
-        type: loki
-        url: http://todo-loki.observability.svc.cluster.local:3100
       - name: Tempo
         type: tempo
         url: http://todo-tempo.observability.svc.cluster.local:3100
-      - name: Pyroscope
-        type: grafana-pyroscope-datasource
-        url: http://todo-pyroscope.observability.svc.cluster.local:4040
 adminPassword: grafana
 service:
   type: ClusterIP
@@ -31,7 +25,12 @@ dashboardProviders:
         disableDeletion: false
         options:
           path: /var/lib/grafana/dashboards/default
-dashboardsConfigMaps:
-  default: ["todo-dashboards"]
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    labelValue: "1"
+    folder: default
+    searchNamespace: ALL
 persistence:
   enabled: false

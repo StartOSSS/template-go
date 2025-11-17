@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
-const target = __ENV.K6_TARGET || 'http://todo-app.todo.svc.cluster.local:8080';
+const target = __ENV.K6_TARGET || 'http://todo-app-api.todo.svc.cluster.local:8080';
 const vus = Number(__ENV.K6_VUS || '20');
 const duration = __ENV.K6_DURATION || '1m';
 
