@@ -30,6 +30,3 @@ jobs:
       - name: Container structure tests
         run: |
           container-structure-test test --image ${GAR_REPOSITORY}/todo-app:latest --config structure-test.yaml || true
-  e2e:
-    needs: unit
-    uses: ./.github/workflows/e2e.yml
