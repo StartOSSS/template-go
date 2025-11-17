@@ -92,6 +92,7 @@ profiles.
 | `E2E` | Minikube + Skaffold deploy, Helm integration + load hooks, Grafana smoke test |
 | `Security` | osv-scanner, Syft SBOM, Grype image scan, Gitleaks |
 | `Deploy Cloud Run` | Builds images with Skaffold and deploys to Cloud Run using the `GCP_SA` secret |
+| `Deploy Preview` | Comment `/deploy` on a PR to deploy its branch to Cloud Run with a tagged revision |
 | `Release` | Semantic tagging automation triggered after PR merge based on labels |
 | `Scorecard` | OSSF scorecard nightly run (results uploaded to the Security tab and exposed
   via the badge below) |
