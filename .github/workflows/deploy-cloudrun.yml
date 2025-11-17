@@ -1,0 +1,45 @@
+name: Deploy Cloud Run
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  GCP_PROJECT: example-project
+  GCP_REGION: us-central1
+  GAR_REPOSITORY: us-central1-docker.pkg.dev/example-project/template-go
+  SKAFFOLD_VERSION: v2.11.1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT }}
+
+      - name: Install Skaffold
+        run: |
+          curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/${SKAFFOLD_VERSION}/skaffold-linux-amd64
+          sudo install skaffold /usr/local/bin/skaffold
+          rm skaffold
+
+      - name: Configure Artifact Registry auth
+        run: |
+          gcloud auth configure-docker ${GAR_REPOSITORY%%/*} -q
+
+      - name: Deploy to Cloud Run
+        run: skaffold run -p cloudrun --default-repo ${GAR_REPOSITORY}
