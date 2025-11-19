@@ -32,8 +32,8 @@ jobs:
         run: |
           eval "$(minikube docker-env)"
           docker build -t todo-app:ci -f Dockerfile .
-          docker build -t todo-integration:ci -f integration/Dockerfile .
-          docker build -t todo-k6:ci -f loadtest/Dockerfile .
+          docker build -t todo-integration:ci -f integration/Dockerfile integration
+          docker build -t todo-k6:ci -f loadtest/Dockerfile loadtest
       - name: Deploy stack with Helm
         run: |
           kubectl create namespace todo --dry-run=client -o yaml | kubectl apply -f -
