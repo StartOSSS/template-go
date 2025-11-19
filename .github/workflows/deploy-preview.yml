@@ -14,6 +14,7 @@ env:
 jobs:
   deploy:
     if: >-
+      github.event_name == 'issue_comment' &&
       github.event.issue.pull_request != '' &&
       contains(github.event.comment.body, '/deploy') &&
       contains('OWNER,MEMBER,COLLABORATOR', github.event.comment.author_association)
