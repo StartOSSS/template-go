@@ -3,6 +3,11 @@ on:
   pull_request:
     paths:
       - 'terraform/**'
+      - '.github/workflows/terraform.yml'
+  push:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform.yml'
   workflow_dispatch:
 
 jobs:
