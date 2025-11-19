@@ -3,6 +3,7 @@ name: Deploy Preview
 on:
   issue_comment:
     types: [created]
+  push:
 
 env:
   GCP_PROJECT: example-project
