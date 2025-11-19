@@ -13,19 +13,34 @@ env:
 
 jobs:
   deploy:
-    if: >-
-      github.event_name == 'issue_comment' &&
-      github.event.issue.pull_request != '' &&
-      contains(github.event.comment.body, '/deploy') &&
-      contains('OWNER,MEMBER,COLLABORATOR', github.event.comment.author_association)
+    if: github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
       id-token: write
     steps:
+      - name: Check deploy trigger
+        id: gate
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          AUTHOR_ASSOC: ${{ github.event.comment.author_association }}
+          PR_URL: ${{ github.event.issue.pull_request.url }}
+        run: |
+          deploy=false
+          if [[ -z "$PR_URL" ]]; then
+            echo "Comment is not on a pull request; skipping"
+          elif [[ "$COMMENT_BODY" != *"/deploy"* ]]; then
+            echo "No /deploy command found; skipping"
+          elif [[ "$AUTHOR_ASSOC" != "OWNER" && "$AUTHOR_ASSOC" != "MEMBER" && "$AUTHOR_ASSOC" != "COLLABORATOR" ]]; then
+            echo "Comment author ($AUTHOR_ASSOC) is not allowed to deploy"
+          else
+            deploy=true
+          fi
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
       - name: Fetch pull request metadata
         id: pr
+        if: steps.gate.outputs.deploy == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_URL: ${{ github.event.issue.pull_request.url }}
@@ -48,29 +63,35 @@ jobs:
           echo "revision-tag=$safe_tag" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
+        if: steps.gate.outputs.deploy == 'true'
         with:
           ref: ${{ steps.pr.outputs.head-ref }}
 
       - name: Authenticate to Google Cloud
+        if: steps.gate.outputs.deploy == 'true'
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA }}
 
       - name: Set up Cloud SDK
+        if: steps.gate.outputs.deploy == 'true'
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.GCP_PROJECT }}
 
       - name: Install Skaffold
+        if: steps.gate.outputs.deploy == 'true'
         run: |
           curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/${SKAFFOLD_VERSION}/skaffold-linux-amd64
           sudo install skaffold /usr/local/bin/skaffold
           rm skaffold
 
       - name: Configure Artifact Registry auth
+        if: steps.gate.outputs.deploy == 'true'
         run: gcloud auth configure-docker ${GAR_REPOSITORY%%/*} -q
 
       - name: Build and deploy preview revision
+        if: steps.gate.outputs.deploy == 'true'
         env:
           REVISION_TAG: ${{ steps.pr.outputs.revision-tag }}
           HEAD_SHA: ${{ steps.pr.outputs.head-sha }}
@@ -80,6 +101,7 @@ jobs:
 
       - name: Tag Cloud Run revision
         id: revision
+        if: steps.gate.outputs.deploy == 'true'
         env:
           REVISION_TAG: ${{ steps.pr.outputs.revision-tag }}
         run: |
@@ -94,6 +116,7 @@ jobs:
           echo "revision=$latest" >> "$GITHUB_OUTPUT"
 
       - name: Post deployment comment
+        if: steps.gate.outputs.deploy == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           REVISION_TAG: ${{ steps.pr.outputs.revision-tag }}
