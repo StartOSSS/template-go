@@ -3,7 +3,6 @@ name: Deploy Preview
 on:
   issue_comment:
     types: [created]
-  push:
 
 env:
   GCP_PROJECT: example-project
@@ -13,14 +12,7 @@ env:
   CLOUD_RUN_SERVICE: todo-app
 
 jobs:
-  noop:
-    if: ${{ github.event_name != 'issue_comment' }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Deploy preview workflow only runs for /deploy comments"
-
   deploy:
-    if: ${{ github.event_name == 'issue_comment' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
