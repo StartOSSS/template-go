@@ -45,7 +45,8 @@ jobs:
             --namespace todo --create-namespace \
             --set appImage=todo-app:ci \
             --set integrationImage=todo-integration:ci \
-            --set loadImage=todo-k6:ci
+            --set loadImage=todo-k6:ci \
+            --set replicaCount=1
           kubectl rollout status deployment/todo-app-api -n todo --timeout=10m
       - name: Helm integration tests
         run: |
