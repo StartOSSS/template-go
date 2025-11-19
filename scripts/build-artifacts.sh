@@ -2,7 +2,7 @@
 set -euo pipefail
 
 export GOOS=${GOOS:-linux}
-export GOARCH=${GOARCH:-arm64}
+export GOARCH=${GOARCH:-$(go env GOARCH)}
 export CGO_ENABLED=0
 export GOPROXY=${GOPROXY:-off}
 export GOSUMDB=${GOSUMDB:-off}
