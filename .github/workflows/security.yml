@@ -1,0 +1,35 @@
+name: Security
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  scanners:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install osv-scanner
+        run: |
+          curl -sSL https://github.com/google/osv-scanner/releases/download/v2.2.4/osv-scanner_linux_amd64 -o osv-scanner_linux_amd64
+          curl -sSL https://github.com/google/osv-scanner/releases/download/v2.2.4/osv-scanner_SHA256SUMS | grep osv-scanner_linux_amd64 > osv-scanner_SHA256SUMS
+          sha256sum -c osv-scanner_SHA256SUMS
+          chmod +x osv-scanner_linux_amd64
+          sudo mv osv-scanner_linux_amd64 /usr/local/bin/osv-scanner
+          rm osv-scanner_SHA256SUMS
+      - name: osv-scanner
+        run: osv-scanner --recursive .
+      - name: Syft SBOM
+        uses: anchore/sbom-action@v0
+      - name: Grype
+        uses: anchore/scan-action@v4
+        with:
+          path: .
+      - name: Gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          chmod +x gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+          rm gitleaks.tar.gz
+          gitleaks detect --source . --redact --exit-code 1

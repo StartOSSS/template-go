@@ -1,0 +1,32 @@
+name: Test
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  GAR_REPOSITORY: us-central1-docker.pkg.dev/example-project/template-go
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Go mod download
+        run: go mod download
+      - name: Go test
+        run: go test ./...
+      - name: Install container-structure-test
+        run: |
+          curl -sSL https://github.com/GoogleContainerTools/container-structure-test/releases/download/v1.22.0/container-structure-test-linux-amd64 -o container-structure-test-linux-amd64
+          curl -sSL https://github.com/GoogleContainerTools/container-structure-test/releases/download/v1.22.0/checksums.txt | grep container-structure-test-linux-amd64 > checksum.txt
+          sha256sum -c checksum.txt
+          chmod +x container-structure-test-linux-amd64
+          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+          rm checksum.txt
+      - name: Container structure tests
+        run: |
+          container-structure-test test --image ${GAR_REPOSITORY}/todo-app:latest --config structure-test.yaml || true

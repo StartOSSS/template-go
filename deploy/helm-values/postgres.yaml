@@ -1,0 +1,7 @@
+credentials:
+  username: todo
+  password: todo
+  database: todo
+persistence:
+  enabled: false
+  size: 2Gi

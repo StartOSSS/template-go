@@ -1,0 +1,6 @@
+apiVersion: v2
+name: prometheus
+description: Lightweight Prometheus deployment for local metrics
+type: application
+version: 0.1.0
+appVersion: "v2.53.1"

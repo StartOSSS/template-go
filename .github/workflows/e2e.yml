@@ -1,0 +1,56 @@
+name: E2E
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_call:
+
+env:
+  GCP_PROJECT: example-project
+  GCP_REGION: us-central1
+  GAR_REPOSITORY: us-central1-docker.pkg.dev/example-project/template-go
+
+jobs:
+  minikube:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Start minikube
+        uses: medyagh/setup-minikube@v0.0.15
+        with:
+          kubernetes-version: v1.28.0
+      - name: Build Go artifacts
+        run: |
+          ./scripts/build-artifacts.sh
+      - name: Build images inside minikube
+        run: |
+          eval "$(minikube docker-env)"
+          docker build -t todo-app:ci -f Dockerfile .
+          docker build -t todo-integration:ci -f integration/Dockerfile integration
+          docker build -t todo-k6:ci -f loadtest/Dockerfile loadtest
+      - name: Deploy stack with Helm
+        run: |
+          kubectl create namespace todo --dry-run=client -o yaml | kubectl apply -f -
+          helm upgrade --install todo-postgres charts/postgres \
+            --namespace todo --create-namespace \
+            --values deploy/helm-values/postgres.yaml
+          kubectl rollout status statefulset/todo-postgres -n todo --timeout=5m
+          helm upgrade --install todo-app charts/todo-app \
+            --namespace todo --create-namespace \
+            --set appImage=todo-app:ci \
+            --set integrationImage=todo-integration:ci \
+            --set loadImage=todo-k6:ci \
+            --set replicaCount=1
+          kubectl rollout status deployment/todo-app-api -n todo --timeout=10m
+      - name: Helm integration tests
+        run: |
+          helm test todo-app -n todo --filter integration --timeout 5m
+          helm test todo-app -n todo --filter load --timeout 10m
+      - name: API smoke test
+        run: kubectl run curl --namespace todo --image=curlimages/curl --rm -i --restart=Never -- curl -sf http://todo-app-api.todo:8080/healthz

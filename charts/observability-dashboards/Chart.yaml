@@ -1,0 +1,6 @@
+apiVersion: v2
+name: observability-dashboards
+description: ConfigMaps that seed Grafana dashboards for the todo stack
+version: 0.1.0
+appVersion: 0.1.0
+type: application

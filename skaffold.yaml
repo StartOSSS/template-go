@@ -1,0 +1,76 @@
+apiVersion: skaffold/v4beta10
+kind: Config
+metadata:
+  name: template-go
+build:
+  hooks:
+    before:
+      - command:
+          - ./scripts/build-artifacts.sh
+  artifacts:
+    - image: todo-app
+      context: .
+      docker:
+        dockerfile: Dockerfile
+    - image: todo-integration
+      context: integration
+      docker:
+        dockerfile: Dockerfile
+    - image: todo-k6
+      context: loadtest
+      docker:
+        dockerfile: Dockerfile
+  tagPolicy:
+    envTemplate:
+      template: "{{.IMAGE_NAME}}:{{.GIT_COMMIT}}"
+profiles:
+  - name: minikube
+    build:
+      local:
+        push: false
+    deploy:
+      helm:
+        releases:
+          - name: todo-postgres
+            namespace: todo
+            createNamespace: true
+            chartPath: charts/postgres
+            valuesFiles:
+              - deploy/helm-values/postgres.yaml
+          - name: todo-tempo
+            namespace: observability
+            createNamespace: true
+            repo: https://grafana.github.io/helm-charts
+            remoteChart: tempo
+            valuesFiles:
+              - deploy/helm-values/tempo.yaml
+          - name: todo-prometheus
+            namespace: observability
+            createNamespace: true
+            chartPath: charts/prometheus
+            valuesFiles:
+              - deploy/helm-values/prometheus.yaml
+          - name: todo-dashboards
+            namespace: observability
+            createNamespace: true
+            chartPath: charts/observability-dashboards
+          - name: todo-grafana
+            namespace: observability
+            createNamespace: true
+            repo: https://grafana.github.io/helm-charts
+            remoteChart: grafana
+            valuesFiles:
+              - deploy/helm-values/grafana.yaml
+          - name: todo-app
+            namespace: todo
+            createNamespace: true
+            chartPath: charts/todo-app
+            setValues:
+              appImage: todo-app
+              integrationImage: todo-integration
+              loadImage: todo-k6
+  - name: cloudrun
+    deploy:
+      cloudrun:
+        projectid: ${GCP_PROJECT}
+        region: ${GCP_REGION}

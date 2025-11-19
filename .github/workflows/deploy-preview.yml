@@ -1,0 +1,141 @@
+name: Deploy Preview
+
+on:
+  issue_comment:
+    types: [created]
+  push:
+
+env:
+  GCP_PROJECT: example-project
+  GCP_REGION: us-central1
+  GAR_REPOSITORY: us-central1-docker.pkg.dev/example-project/template-go
+  SKAFFOLD_VERSION: v2.11.1
+  CLOUD_RUN_SERVICE: todo-app
+
+jobs:
+  noop:
+    if: ${{ github.event_name != 'issue_comment' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Deploy preview workflow only runs for /deploy comments"
+
+  deploy:
+    if: ${{ github.event_name == 'issue_comment' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Check deploy trigger
+        id: gate
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body || '' }}
+          AUTHOR_ASSOC: ${{ github.event.comment.author_association || '' }}
+          PR_URL: ${{ github.event.issue.pull_request.url || '' }}
+        run: |
+          deploy=false
+          if [[ -z "$PR_URL" ]]; then
+            echo "Comment is not on a pull request; skipping"
+          elif [[ "$COMMENT_BODY" != *"/deploy"* ]]; then
+            echo "No /deploy command found; skipping"
+          elif [[ "$AUTHOR_ASSOC" != "OWNER" && "$AUTHOR_ASSOC" != "MEMBER" && "$AUTHOR_ASSOC" != "COLLABORATOR" ]]; then
+            echo "Comment author ($AUTHOR_ASSOC) is not allowed to deploy"
+          else
+            deploy=true
+          fi
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+      - name: Fetch pull request metadata
+        id: pr
+        if: ${{ steps.gate.outputs.deploy == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.issue.pull_request.url || '' }}
+        run: |
+          pr=$(gh api "$PR_URL")
+          head_ref=$(jq -r '.head.ref' <<<"$pr")
+          head_sha=$(jq -r '.head.sha' <<<"$pr")
+          head_repo=$(jq -r '.head.repo.full_name' <<<"$pr")
+          base_repo=$(jq -r '.base.repo.full_name' <<<"$pr")
+          if [[ "$head_repo" != "$base_repo" ]]; then
+            echo "This workflow only deploys branches in the main repository." >&2
+            exit 1
+          fi
+          safe_tag=$(echo "$head_ref" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-\+//;s/-\+$//' | cut -c1-10)
+          if [[ -z "$safe_tag" ]]; then
+            safe_tag=preview
+          fi
+          echo "head-ref=$head_ref" >> "$GITHUB_OUTPUT"
+          echo "head-sha=$head_sha" >> "$GITHUB_OUTPUT"
+          echo "revision-tag=$safe_tag" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: ${{ steps.gate.outputs.deploy == 'true' }}
+        with:
+          ref: ${{ steps.pr.outputs.head-ref }}
+
+      - name: Authenticate to Google Cloud
+        if: ${{ steps.gate.outputs.deploy == 'true' }}
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA }}
+
+      - name: Set up Cloud SDK
+        if: ${{ steps.gate.outputs.deploy == 'true' }}
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT }}
+
+      - name: Install Skaffold
+        if: ${{ steps.gate.outputs.deploy == 'true' }}
+        run: |
+          curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/${SKAFFOLD_VERSION}/skaffold-linux-amd64
+          sudo install skaffold /usr/local/bin/skaffold
+          rm skaffold
+
+      - name: Configure Artifact Registry auth
+        if: ${{ steps.gate.outputs.deploy == 'true' }}
+        run: gcloud auth configure-docker ${GAR_REPOSITORY%%/*} -q
+
+      - name: Build and deploy preview revision
+        if: ${{ steps.gate.outputs.deploy == 'true' }}
+        env:
+          REVISION_TAG: ${{ steps.pr.outputs.revision-tag }}
+          HEAD_SHA: ${{ steps.pr.outputs.head-sha }}
+        run: |
+          IMAGE_TAG="${REVISION_TAG}-${HEAD_SHA:0:7}"
+          skaffold run -p cloudrun --default-repo ${GAR_REPOSITORY} --tag ${IMAGE_TAG}
+
+      - name: Tag Cloud Run revision
+        id: revision
+        if: ${{ steps.gate.outputs.deploy == 'true' }}
+        env:
+          REVISION_TAG: ${{ steps.pr.outputs.revision-tag }}
+        run: |
+          latest=$(gcloud run services describe ${CLOUD_RUN_SERVICE} --region ${GCP_REGION} --format='value(status.latestReadyRevisionName)')
+          if [[ -z "$latest" ]]; then
+            echo "Failed to resolve latest revision" >&2
+            exit 1
+          fi
+          gcloud run services update-traffic ${CLOUD_RUN_SERVICE} \
+            --region ${GCP_REGION} \
+            --update-tags ${REVISION_TAG}=${latest}
+          echo "revision=$latest" >> "$GITHUB_OUTPUT"
+
+      - name: Post deployment comment
+        if: ${{ steps.gate.outputs.deploy == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVISION_TAG: ${{ steps.pr.outputs.revision-tag }}
+          REVISION_NAME: ${{ steps.revision.outputs.revision }}
+        run: |
+          PREVIEW_URL="https://${REVISION_TAG}---${CLOUD_RUN_SERVICE}-${GCP_REGION}.a.run.app"
+          COMMENT=$(cat <<EOF
+✅ Preview deployment triggered.
+
+- Revision: ${REVISION_NAME}
+- Tag: \`${REVISION_TAG}\`
+- URL: ${PREVIEW_URL}
+EOF
+          )
+          gh issue comment ${{ github.event.issue.number }} --body "$COMMENT"

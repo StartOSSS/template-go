@@ -1,0 +1,6 @@
+apiVersion: v2
+name: todo-app
+description: Helm chart for the Connect-based todo API + integration/load tests
+version: 0.1.0
+appVersion: 0.1.0
+type: application

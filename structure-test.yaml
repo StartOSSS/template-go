@@ -1,0 +1,8 @@
+schemaVersion: 2.0.0
+tests:
+  - name: binary-present
+    commandTests:
+      - name: server-exists
+        command: ["/server"]
+        args: ["-h"]
+        expectedError: ["usage"]

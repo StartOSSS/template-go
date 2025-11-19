@@ -1,0 +1,13 @@
+fullnameOverride: todo-prometheus
+image:
+  repository: prom/prometheus
+  tag: v2.53.1
+  pullPolicy: IfNotPresent
+service:
+  port: 9090
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+scrapeTargets:
+  - todo-app.todo.svc.cluster.local:9090

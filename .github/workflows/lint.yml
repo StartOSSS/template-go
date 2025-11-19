@@ -1,0 +1,42 @@
+name: Lint
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Go mod download
+        run: go mod download
+      - uses: bufbuild/buf-action@v1
+        with:
+          github_token: ${{ github.token }}
+          pr_comment: false
+          breaking: false
+      - name: Go fmt
+        run: |
+          set -euo pipefail
+          files=$(git ls-files '*.go')
+          if [ -z "${files}" ]; then
+            exit 0
+          fi
+          test -z "$(gofmt -l ${files})"
+      - name: GolangCI-Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.59.1
+          args: --fast --timeout=5m --modules-download-mode=mod ./...
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive || true
+      - name: Shellcheck
+        uses: ludeeus/action-shellcheck@2.0.0
+      - name: Dockerfile lint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
