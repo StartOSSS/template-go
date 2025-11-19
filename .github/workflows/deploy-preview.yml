@@ -12,6 +12,12 @@ env:
   CLOUD_RUN_SERVICE: todo-app
 
 jobs:
+  noop:
+    if: github.event_name != 'issue_comment'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Deploy preview workflow only runs for /deploy comments"
+
   deploy:
     if: github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
