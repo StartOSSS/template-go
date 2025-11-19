@@ -30,9 +30,9 @@ jobs:
       - name: Check deploy trigger
         id: gate
         env:
-          COMMENT_BODY: ${{ github.event.comment.body }}
-          AUTHOR_ASSOC: ${{ github.event.comment.author_association }}
-          PR_URL: ${{ github.event.issue.pull_request.url }}
+          COMMENT_BODY: ${{ github.event.comment.body || '' }}
+          AUTHOR_ASSOC: ${{ github.event.comment.author_association || '' }}
+          PR_URL: ${{ github.event.issue.pull_request.url || '' }}
         run: |
           deploy=false
           if [[ -z "$PR_URL" ]]; then
@@ -50,7 +50,7 @@ jobs:
         if: ${{ steps.gate.outputs.deploy == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_URL: ${{ github.event.issue.pull_request.url }}
+          PR_URL: ${{ github.event.issue.pull_request.url || '' }}
         run: |
           pr=$(gh api "$PR_URL")
           head_ref=$(jq -r '.head.ref' <<<"$pr")
