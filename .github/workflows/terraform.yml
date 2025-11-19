@@ -6,13 +6,13 @@ on:
 
 jobs:
   noop:
-    if: github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch'
+    if: ${{ github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - run: echo "Terraform plan only runs for pull requests or manual dispatches"
 
   plan:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
