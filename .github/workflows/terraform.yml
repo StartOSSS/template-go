@@ -5,6 +5,8 @@ on:
       - 'terraform/**'
       - '.github/workflows/terraform.yml'
   push:
+    branches:
+      - main
     paths:
       - 'terraform/**'
       - '.github/workflows/terraform.yml'
