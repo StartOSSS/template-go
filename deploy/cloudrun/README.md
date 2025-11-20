@@ -15,8 +15,7 @@ the Cloud Run metadata server endpoint.
 
 - `Deploy Cloud Run` runs on pushes to `main` (or manually) and refreshes the production
   revision with the latest commit.
-- `Deploy Preview` listens for PR comments. Comment `/deploy` on a pull request to build the
-  branch, deploy it as a new revision, and tag that revision with the branch name truncated to
-  10 characters. Each tag receives a dedicated Cloud Run URL following the
-  `https://<tag>---todo-app-us-central1.a.run.app` format so feature branches can be reviewed
-  independently.
+- `Preview Deploy` listens for PR comments. Comment `/deploy` on a pull request to run the
+  Skaffold `preview` profile (Cloud Build + Cloud Run) via `make preview-deploy`, tag the
+  resulting revision with a short branch slug, and surface the URL in both the workflow
+  summary and PR comments so features can be reviewed independently.
