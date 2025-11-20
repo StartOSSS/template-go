@@ -4,8 +4,6 @@ on:
   issue_comment:
     types: [created]
   push:
-    paths:
-      - '.github/workflows/preview-deploy.yml'
   workflow_dispatch:
 
 env:
@@ -16,11 +14,17 @@ env:
   SKAFFOLD_VERSION: v2.11.1
 
 jobs:
-  noop:
-    if: ${{ github.event_name != 'issue_comment' || !github.event.issue.pull_request }}
+  push-noop:
+    if: ${{ github.event_name != 'issue_comment' }}
     runs-on: ubuntu-latest
     steps:
       - run: echo "Preview deploy workflow only runs for /deploy comments on pull requests"
+
+  comment-noop:
+    if: ${{ github.event_name == 'issue_comment' && !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Preview deploy workflow only runs for pull request comments"
 
   deploy:
     if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request }}
