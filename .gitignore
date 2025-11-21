@@ -40,4 +40,3 @@ test-results/
 
 # Local grafana/mimir/loki artifacts
 observability/data/
-

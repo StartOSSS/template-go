@@ -1,0 +1,7 @@
+project_id      = "sandbox-project-tc"
+region          = "us-central1"
+environment     = "prod"
+database_tier   = "db-custom-1-3840"
+authorized_cidr = "0.0.0.0/0"
+database_user   = "todo"
+database_name   = "todo"

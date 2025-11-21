@@ -70,7 +70,23 @@ profiles:
               integrationImage: todo-integration
               loadImage: todo-k6
   - name: cloudrun
+    build:
+      googleCloudBuild:
+        projectId: ${GCP_PROJECT}
     deploy:
       cloudrun:
-        projectid: ${GCP_PROJECT}
+        projectId: ${GCP_PROJECT}
         region: ${GCP_REGION}
+        serviceName: ${SERVICE_NAME}
+  - name: preview
+    build:
+      googleCloudBuild:
+        projectId: ${GCP_PROJECT}
+    tagPolicy:
+      envTemplate:
+        template: "{{.PREVIEW_TAG}}"
+    deploy:
+      cloudrun:
+        projectId: ${GCP_PROJECT}
+        region: ${GCP_REGION}
+        serviceName: ${SERVICE_NAME}

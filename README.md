@@ -15,6 +15,9 @@ Minikube) or in CI.
   Loki, Tempo, Mimir, Pyroscope) bootstrapped through upstream Helm charts
 - ✅ GitOps-ready: Skaffold config for Cloud Run deploys, Terraform modules for IAM + secrets,
   GitHub workflows for linting, testing, integration, load, and release automation
+- ✅ On-demand preview envs via `/deploy` comments in CI or `make preview-deploy` locally
+- ✅ Documented best practices in `docs/best-practices.md` explaining every folder + workflow
+- ✅ Database credentials are auto-generated in Terraform, stored in Secret Manager, and mounted into Cloud Run revisions
 - ✅ Security & supply-chain posture: Dependabot, OSSF Scorecard, osv-scanner, Syft, Grype,
   Gitleaks, container-structure-tests, and NIST SSDF controls baked into CI
 
@@ -43,10 +46,45 @@ make load-test
 make plan
 ```
 
+## Pre-commit hooks
+
+Install and activate the bundled hooks to run `make fmt`, `make lint`, `make test`, and
+`make plan` automatically before every commit:
+
+```bash
+brew install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
 The default configuration lives in `.env.example`. Copy it into `.env` and customise secrets
 before running the stack. Skaffold pushes application + test images to Artifact Registry
 (`GAR_REPOSITORY`) for Cloud Run deploys and loads them straight into Minikube for local
 profiles.
+
+## Best practices reference
+
+See `docs/best-practices.md` for the rationale behind each directory, workflow,
+and automation choice baked into this template. Reference it when cloning the
+repo to keep conventions consistent across services.
+
+## Preview environments
+
+- Comment `/deploy` on any pull request to trigger the **Preview Deploy** workflow. GitHub
+  Actions authenticates with Google Cloud, runs the Skaffold `preview` profile via Cloud Build
+  + Cloud Run, and tags the resulting revision with a short slug derived from the branch name.
+  The workflow captures the Cloud Run URL for that tag, publishes it in the job summary, and
+  posts it back on the pull request thread.
+- Run `gcloud auth login --brief` (or export `GOOGLE_APPLICATION_CREDENTIALS`) locally and
+  call `make preview-deploy` to produce the same tag/URL on demand. The helper script accepts
+  overrides for `BRANCH`, `COMMIT_SHA`, `PREVIEW_TAG`, `GCP_PROJECT`, `GCP_REGION`,
+  `SERVICE_NAME`, and `SKAFFOLD_DEFAULT_REPO` so forks or sandboxes can point to alternate
+  projects/regions.
+- `scripts/preview-deploy.sh` bootstraps authentication automatically: it reuses
+  `GOOGLE_APPLICATION_CREDENTIALS` in CI and falls back to `gcloud auth login --brief` if no
+  active account exists locally. CI workflows must still call
+  `google-github-actions/auth@v2` (or similar) before invoking `make preview-deploy` so the
+  gcloud SDK has an active account.
 
 ## Repository map
 
@@ -92,7 +130,7 @@ profiles.
 | `E2E` | Minikube + Skaffold deploy, Helm integration + load hooks, Grafana smoke test |
 | `Security` | osv-scanner, Syft SBOM, Grype image scan, Gitleaks |
 | `Deploy Cloud Run` | Builds images with Skaffold and deploys to Cloud Run using the `GCP_SA` secret |
-| `Deploy Preview` | Comment `/deploy` on a PR to deploy its branch to Cloud Run with a tagged revision |
+| `Preview Deploy` | Comment `/deploy` on a PR to run the Skaffold preview profile (Cloud Build + Cloud Run) and return a tagged URL |
 | `Release` | Semantic tagging automation triggered after PR merge based on labels |
 | `Scorecard` | OSSF scorecard nightly run (results uploaded to the Security tab and exposed
   via the badge below) |

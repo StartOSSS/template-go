@@ -7,9 +7,18 @@ terraform {
   }
 }
 
+resource "random_password" "database" {
+  length      = 32
+  min_lower   = 1
+  min_numeric = 1
+  min_upper   = 1
+  special     = false
+}
+
 locals {
+  database_password     = random_password.database.result
   database_host         = coalesce(module.postgres.private_ip_address, module.postgres.public_ip_address)
-  database_url          = "postgres://${var.database_user}:${var.database_password}@${local.database_host}:5432/${var.database_name}?sslmode=disable"
+  database_url          = "postgres://${var.database_user}:${local.database_password}@${local.database_host}:5432/${var.database_name}?sslmode=disable"
   service_account_id    = "${var.environment}-todo-api"
   service_account_email = "${local.service_account_id}@${var.project_id}.iam.gserviceaccount.com"
 }
@@ -24,7 +33,7 @@ module "service_accounts" {
 }
 
 module "postgres" {
-  source              = "terraform-google-modules/sql-db/google//modules/pgsql"
+  source              = "terraform-google-modules/sql-db/google//modules/postgresql"
   version             = "~> 18.0"
   name                = "${var.environment}-todo"
   project_id          = var.project_id
@@ -35,8 +44,8 @@ module "postgres" {
   availability_type   = "ZONAL"
   disk_autoresize     = true
   user_name           = var.database_user
-  user_password       = var.database_password
-  database_name       = var.database_name
+  user_password       = local.database_password
+  db_name             = var.database_name
   ip_configuration = {
     ipv4_enabled    = true
     private_network = null
@@ -52,14 +61,16 @@ module "secrets" {
   version = "~> 0.4"
 
   project_id = var.project_id
-  secrets = {
-    ("${var.environment}-todo-database-url") = {
-      replication = {
-        automatic = true
-      }
+  secrets = [
+    {
+      name        = "${var.environment}-todo-database-url"
       secret_data = local.database_url
+    },
+    {
+      name        = "${var.environment}-todo-database-password"
+      secret_data = local.database_password
     }
-  }
+  ]
 }
 
 resource "google_project_iam_member" "run_invoker" {

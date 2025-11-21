@@ -5,8 +5,12 @@ export GO111MODULE=on
 
 TF_ENVS := dev preprod prod
 GAR_REPOSITORY ?= us-central1-docker.pkg.dev/example-project/template-go
+export GCP_PROJECT ?= example-project
+export GCP_REGION ?= us-central1
+export SERVICE_NAME ?= todo-app
+export SKAFFOLD_DEFAULT_REPO ?= $(GAR_REPOSITORY)
 
-.PHONY: help all bootstrap fmt lint test dev run integration-test load-test security-scan minikube-up plan
+.PHONY: help all bootstrap fmt lint test dev run integration-test load-test security-scan minikube-up plan preview-deploy
 
 help: ## Print all documented targets (no variables required)
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-22s %s\n", $$1, $$2}'
@@ -21,7 +25,7 @@ bootstrap: ## Install buf, skaffold, minikube, and helm (uses GOPATH for buf ins
 	command -v helm >/dev/null || curl -fsSL https://get.helm.sh/helm-v3.14.4-linux-amd64.tar.gz | tar -xz --strip-components=1 linux-amd64/helm && install helm /usr/local/bin/helm && rm helm
 
 fmt: ## Run gofmt across the repo (no variables required)
-	gofmt -w $(shell find . -name '*.go' -not -path './gen/*' -not -path './third_party/*')
+	gofmt -w $(shell find . -name '*.go' -not -path './gen/*' -not -path './third_party/*' -not -path '*/.terraform/*')
 
 lint: ## Run Buf, GolangCI-Lint, Terraform linting, and shell/docker linters (requires Docker for tflint)
 	buf lint
@@ -65,3 +69,6 @@ security-scan: ## Run osv-scanner, syft/grype, and gitleaks (requires internet a
 	syft . -o json > sbom.json
 	grype sbom:sbom.json || true
 	gitleaks detect --source .
+
+preview-deploy: ## Deploy preview Cloud Run revision via Skaffold
+	BRANCH="$(BRANCH)" scripts/preview-deploy.sh

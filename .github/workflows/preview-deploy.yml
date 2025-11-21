@@ -1,26 +1,33 @@
-name: Deploy Preview
+name: Preview Deploy
 
 on:
   issue_comment:
     types: [created]
   push:
+  workflow_dispatch:
 
 env:
   GCP_PROJECT: example-project
   GCP_REGION: us-central1
-  GAR_REPOSITORY: us-central1-docker.pkg.dev/example-project/template-go
+  SERVICE_NAME: todo-app
+  SKAFFOLD_DEFAULT_REPO: us-central1-docker.pkg.dev/example-project/template-go
   SKAFFOLD_VERSION: v2.11.1
-  CLOUD_RUN_SERVICE: todo-app
 
 jobs:
-  noop:
+  push-noop:
     if: ${{ github.event_name != 'issue_comment' }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Deploy preview workflow only runs for /deploy comments"
+      - run: echo "Preview deploy workflow only runs for /deploy comments on pull requests"
+
+  comment-noop:
+    if: ${{ github.event_name == 'issue_comment' && !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Preview deploy workflow only runs for pull request comments"
 
   deploy:
-    if: ${{ github.event_name == 'issue_comment' }}
+    if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,12 +39,9 @@ jobs:
         env:
           COMMENT_BODY: ${{ github.event.comment.body || '' }}
           AUTHOR_ASSOC: ${{ github.event.comment.author_association || '' }}
-          PR_URL: ${{ github.event.issue.pull_request.url || '' }}
         run: |
           deploy=false
-          if [[ -z "$PR_URL" ]]; then
-            echo "Comment is not on a pull request; skipping"
-          elif [[ "$COMMENT_BODY" != *"/deploy"* ]]; then
+          if [[ "$COMMENT_BODY" != *"/deploy"* ]]; then
             echo "No /deploy command found; skipping"
           elif [[ "$AUTHOR_ASSOC" != "OWNER" && "$AUTHOR_ASSOC" != "MEMBER" && "$AUTHOR_ASSOC" != "COLLABORATOR" ]]; then
             echo "Comment author ($AUTHOR_ASSOC) is not allowed to deploy"
@@ -45,6 +49,7 @@ jobs:
             deploy=true
           fi
           echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+
       - name: Fetch pull request metadata
         id: pr
         if: ${{ steps.gate.outputs.deploy == 'true' }}
@@ -61,13 +66,13 @@ jobs:
             echo "This workflow only deploys branches in the main repository." >&2
             exit 1
           fi
-          safe_tag=$(echo "$head_ref" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-\+//;s/-\+$//' | cut -c1-10)
+          safe_tag=$(echo "$head_ref" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-\+//;s/-\+$//' | cut -c1-30)
           if [[ -z "$safe_tag" ]]; then
             safe_tag=preview
           fi
           echo "head-ref=$head_ref" >> "$GITHUB_OUTPUT"
           echo "head-sha=$head_sha" >> "$GITHUB_OUTPUT"
-          echo "revision-tag=$safe_tag" >> "$GITHUB_OUTPUT"
+          echo "preview-tag=$safe_tag" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
         if: ${{ steps.gate.outputs.deploy == 'true' }}
@@ -76,6 +81,7 @@ jobs:
 
       - name: Authenticate to Google Cloud
         if: ${{ steps.gate.outputs.deploy == 'true' }}
+        id: auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA }}
@@ -93,49 +99,67 @@ jobs:
           sudo install skaffold /usr/local/bin/skaffold
           rm skaffold
 
-      - name: Configure Artifact Registry auth
-        if: ${{ steps.gate.outputs.deploy == 'true' }}
-        run: gcloud auth configure-docker ${GAR_REPOSITORY%%/*} -q
-
-      - name: Build and deploy preview revision
+      - name: Deploy preview via Makefile
         if: ${{ steps.gate.outputs.deploy == 'true' }}
         env:
-          REVISION_TAG: ${{ steps.pr.outputs.revision-tag }}
-          HEAD_SHA: ${{ steps.pr.outputs.head-sha }}
-        run: |
-          IMAGE_TAG="${REVISION_TAG}-${HEAD_SHA:0:7}"
-          skaffold run -p cloudrun --default-repo ${GAR_REPOSITORY} --tag ${IMAGE_TAG}
+          BRANCH: ${{ steps.pr.outputs.head-ref }}
+          COMMIT_SHA: ${{ steps.pr.outputs.head-sha }}
+          PREVIEW_TAG: ${{ steps.pr.outputs.preview-tag }}
+          GCP_PROJECT: ${{ env.GCP_PROJECT }}
+          GCP_REGION: ${{ env.GCP_REGION }}
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
+          SKAFFOLD_DEFAULT_REPO: ${{ env.SKAFFOLD_DEFAULT_REPO }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
+        run: make preview-deploy
 
-      - name: Tag Cloud Run revision
-        id: revision
+      - name: Capture preview URL
+        id: preview
         if: ${{ steps.gate.outputs.deploy == 'true' }}
         env:
-          REVISION_TAG: ${{ steps.pr.outputs.revision-tag }}
+          PREVIEW_TAG: ${{ steps.pr.outputs.preview-tag }}
+          GCP_PROJECT: ${{ env.GCP_PROJECT }}
+          GCP_REGION: ${{ env.GCP_REGION }}
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
         run: |
-          latest=$(gcloud run services describe ${CLOUD_RUN_SERVICE} --region ${GCP_REGION} --format='value(status.latestReadyRevisionName)')
-          if [[ -z "$latest" ]]; then
-            echo "Failed to resolve latest revision" >&2
+          set -euo pipefail
+          url=$(gcloud run services describe "$SERVICE_NAME" \
+            --project "$GCP_PROJECT" \
+            --region "$GCP_REGION" \
+            --format json | jq -r --arg TAG "$PREVIEW_TAG" '.status.traffic[]? | select(.tag==$TAG) | .url' | head -n1)
+          if [[ -z "$url" || "$url" == "null" ]]; then
+            echo "Failed to resolve preview URL" >&2
             exit 1
           fi
-          gcloud run services update-traffic ${CLOUD_RUN_SERVICE} \
-            --region ${GCP_REGION} \
-            --update-tags ${REVISION_TAG}=${latest}
-          echo "revision=$latest" >> "$GITHUB_OUTPUT"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
 
-      - name: Post deployment comment
+      - name: Write job summary
+        if: ${{ steps.gate.outputs.deploy == 'true' }}
+        env:
+          PREVIEW_TAG: ${{ steps.pr.outputs.preview-tag }}
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+          BRANCH_NAME: ${{ steps.pr.outputs.head-ref }}
+        run: |
+          {
+            echo "### Preview environment"
+            echo ""
+            echo "- Branch: $BRANCH_NAME"
+            echo "- Tag: \\`$PREVIEW_TAG\\`"
+            echo "- URL: $PREVIEW_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment on pull request
         if: ${{ steps.gate.outputs.deploy == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          REVISION_TAG: ${{ steps.pr.outputs.revision-tag }}
-          REVISION_NAME: ${{ steps.revision.outputs.revision }}
+          PREVIEW_TAG: ${{ steps.pr.outputs.preview-tag }}
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+          BRANCH_NAME: ${{ steps.pr.outputs.head-ref }}
         run: |
-          PREVIEW_URL="https://${REVISION_TAG}---${CLOUD_RUN_SERVICE}-${GCP_REGION}.a.run.app"
           COMMENT=$(cat <<EOF
-✅ Preview deployment triggered.
+✅ Preview deploy triggered for \\`$BRANCH_NAME\\`.
 
-- Revision: ${REVISION_NAME}
-- Tag: \`${REVISION_TAG}\`
-- URL: ${PREVIEW_URL}
+- Tag: \\`$PREVIEW_TAG\\`
+- URL: $PREVIEW_URL
 EOF
           )
           gh issue comment ${{ github.event.issue.number }} --body "$COMMENT"

@@ -1,4 +1,11 @@
 terraform {
+  cloud {
+    organization = "tejasc"
+    workspaces {
+      name = "template-go"
+    }
+  }
+
   required_version = ">= 1.6.0"
   required_providers {
     google = {
@@ -21,6 +28,5 @@ module "app" {
   database_tier     = var.database_tier
   authorized_cidr   = var.authorized_cidr
   database_user     = var.database_user
-  database_password = var.database_password
   database_name     = var.database_name
 }

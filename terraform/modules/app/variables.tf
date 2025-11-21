@@ -25,12 +25,6 @@ variable "database_user" {
   default = "todo"
 }
 
-variable "database_password" {
-  type      = string
-  sensitive = true
-  default   = "todo-demo"
-}
-
 variable "database_name" {
   type    = string
   default = "todo"
