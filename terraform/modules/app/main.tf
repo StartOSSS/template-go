@@ -7,9 +7,18 @@ terraform {
   }
 }
 
+resource "random_password" "database" {
+  length      = 32
+  min_lower   = 1
+  min_numeric = 1
+  min_upper   = 1
+  special     = false
+}
+
 locals {
+  database_password     = random_password.database.result
   database_host         = coalesce(module.postgres.private_ip_address, module.postgres.public_ip_address)
-  database_url          = "postgres://${var.database_user}:${var.database_password}@${local.database_host}:5432/${var.database_name}?sslmode=disable"
+  database_url          = "postgres://${var.database_user}:${local.database_password}@${local.database_host}:5432/${var.database_name}?sslmode=disable"
   service_account_id    = "${var.environment}-todo-api"
   service_account_email = "${local.service_account_id}@${var.project_id}.iam.gserviceaccount.com"
 }
@@ -34,9 +43,9 @@ module "postgres" {
   database_version    = "POSTGRES_15"
   availability_type   = "ZONAL"
   disk_autoresize     = true
-  user_name     = var.database_user
-  user_password = var.database_password
-  db_name       = var.database_name
+  user_name           = var.database_user
+  user_password       = local.database_password
+  db_name             = var.database_name
   ip_configuration = {
     ipv4_enabled    = true
     private_network = null
@@ -52,10 +61,16 @@ module "secrets" {
   version = "~> 0.4"
 
   project_id = var.project_id
-  secrets = [{
-    name        = "${var.environment}-todo-database-url"
-    secret_data = local.database_url
-  }]
+  secrets = [
+    {
+      name        = "${var.environment}-todo-database-url"
+      secret_data = local.database_url
+    },
+    {
+      name        = "${var.environment}-todo-database-password"
+      secret_data = local.database_password
+    }
+  ]
 }
 
 resource "google_project_iam_member" "run_invoker" {

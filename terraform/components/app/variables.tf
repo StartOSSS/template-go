@@ -28,12 +28,6 @@ variable "database_user" {
   type        = string
 }
 
-variable "database_password" {
-  description = "Database password"
-  type        = string
-  sensitive   = true
-}
-
 variable "database_name" {
   description = "Database name"
   type        = string

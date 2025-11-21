@@ -17,6 +17,7 @@ Minikube) or in CI.
   GitHub workflows for linting, testing, integration, load, and release automation
 - ✅ On-demand preview envs via `/deploy` comments in CI or `make preview-deploy` locally
 - ✅ Documented best practices in `docs/best-practices.md` explaining every folder + workflow
+- ✅ Database credentials are auto-generated in Terraform, stored in Secret Manager, and mounted into Cloud Run revisions
 - ✅ Security & supply-chain posture: Dependabot, OSSF Scorecard, osv-scanner, Syft, Grype,
   Gitleaks, container-structure-tests, and NIST SSDF controls baked into CI
 

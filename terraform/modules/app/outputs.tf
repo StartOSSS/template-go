@@ -10,6 +10,10 @@ output "database_secret" {
   value = "${var.environment}-todo-database-url"
 }
 
+output "database_password_secret" {
+  value = "${var.environment}-todo-database-password"
+}
+
 output "database_url" {
   value     = local.database_url
   sensitive = true

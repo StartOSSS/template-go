@@ -10,6 +10,8 @@ env:
   GCP_REGION: us-central1
   GAR_REPOSITORY: us-central1-docker.pkg.dev/example-project/template-go
   SKAFFOLD_VERSION: v2.11.1
+  SERVICE_NAME: todo-app
+  ENVIRONMENT: prod
 
 jobs:
   deploy:
@@ -43,3 +45,11 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: skaffold run -p cloudrun --default-repo ${GAR_REPOSITORY}
+
+      - name: Mount DATABASE_URL secret
+        run: |
+          gcloud run services update ${SERVICE_NAME} \
+            --project ${GCP_PROJECT} \
+            --region ${GCP_REGION} \
+            --set-secrets DATABASE_URL=${ENVIRONMENT}-todo-database-url:latest \
+            --quiet

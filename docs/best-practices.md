@@ -81,9 +81,10 @@ as the "how".
   checkpoints, while SLSA attestations come from the release workflows. Skaffold's
   Cloud Build integration plus `scripts/build-artifacts.sh` (used by hooks) ensure
   deterministic builds.
-- **Secrets management:** Deploy workflows rely on GitHub OIDC to fetch the
-  `GCP_SA` secret and on Terraform outputs for runtime secrets, keeping minimal
-  credentials in the repo.
+- **Secrets management:** Terraform generates Cloud SQL passwords, stores both the
+  password + `DATABASE_URL` inside Secret Manager, and Cloud Run revisions mount the
+  `DATABASE_URL` secret via `gcloud run services update` after every Skaffold deploy. CI
+  relies on GitHub OIDC + the `GCP_SA` secret, keeping credentials out of the repo.
 
 ## Documentation + governance
 

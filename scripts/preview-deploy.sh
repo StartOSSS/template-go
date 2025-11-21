@@ -7,6 +7,8 @@ cd "${ROOT_DIR}"
 : "${GCP_PROJECT:?Set GCP_PROJECT}"
 : "${GCP_REGION:?Set GCP_REGION}"
 : "${SERVICE_NAME:?Set SERVICE_NAME}"
+DEPLOY_ENVIRONMENT=${DEPLOY_ENVIRONMENT:-dev}
+DATABASE_SECRET_NAME=${DATABASE_SECRET_NAME:-"${DEPLOY_ENVIRONMENT}-todo-database-url"}
 
 command -v gcloud >/dev/null || { echo "gcloud CLI is required" >&2; exit 1; }
 command -v skaffold >/dev/null || { echo "skaffold CLI is required" >&2; exit 1; }
@@ -59,6 +61,13 @@ gcloud config set project "${GCP_PROJECT}" >/dev/null
 
 echo "Running Skaffold preview deployment"
 skaffold run -p preview --default-repo="${SKAFFOLD_DEFAULT_REPO}"
+
+echo "Configuring Cloud Run secret mount for DATABASE_URL via ${DATABASE_SECRET_NAME}"
+gcloud run services update "${SERVICE_NAME}" \
+  --project "${GCP_PROJECT}" \
+  --region "${GCP_REGION}" \
+  --set-secrets "DATABASE_URL=${DATABASE_SECRET_NAME}:latest" \
+  --quiet
 
 echo "Waiting for preview URL tagged '${PREVIEW_TAG}'"
 preview_url=""
