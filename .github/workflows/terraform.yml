@@ -1,31 +1,115 @@
-name: Terraform
+name: Terraform Plan
+
 on:
   pull_request:
     paths:
       - 'terraform/**'
       - '.github/workflows/terraform.yml'
-  push:
   workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to comment on
+        required: true
+      branch:
+        description: Branch to check out for the plan
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
-  noop:
-    if: ${{ github.event_name == 'push' }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Terraform plan only runs for pull requests or manual dispatches"
-
   plan:
-    if: ${{ github.event_name != 'push' }}
     runs-on: ubuntu-latest
+    env:
+      PLAN_DIR: plan-output
     steps:
+      - name: Resolve checkout ref
+        id: pr
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          head_ref=$(gh pr view "$PR_NUMBER" --json headRefName --jq '.headRefName')
+          echo "head-ref=$head_ref" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || steps.pr.outputs.head-ref || github.event.inputs.branch }}
+
       - uses: hashicorp/setup-terraform@v3
+
       - name: Configure gcloud auth
         if: ${{ secrets.GCP_SA_KEY != '' }}
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+
       - name: Terraform fmt
         run: terraform fmt -check -recursive
-      - name: Terraform plan
-        run: make plan
+
+      - name: Terraform init (preview)
+        run: terraform -chdir=terraform/components/app init -backend=false -input=false
+
+      - name: Terraform plans (dev, preprod, prod)
+        id: plans
+        run: |
+          set -euo pipefail
+          mkdir -p "$PLAN_DIR"
+          comment_file="$PLAN_DIR/comment.md"
+          : > "$comment_file"
+          for env in dev preprod prod; do
+            tfvars="terraform/components/app/${env}.tfvars"
+            if [[ ! -f "$tfvars" ]]; then
+              tfvars="${tfvars}.example"
+            fi
+            outfile="$PLAN_DIR/plan-${env}.txt"
+            terraform -chdir=terraform/components/app plan \
+              -var-file="$tfvars" \
+              -input=false \
+              -lock=false \
+              -no-color | tee "$outfile"
+            test -s "$outfile"
+            env_title=$(echo "$env" | tr '[:lower:]' '[:upper:]')
+            {
+              echo "### ${env_title} plan (\`${tfvars}\`)"
+              echo
+              echo '```'
+              cat "$outfile"
+              echo '```'
+              echo
+            } >> "$comment_file"
+          done
+          echo "comment_file=$comment_file" >> "$GITHUB_OUTPUT"
+
+      - name: Append plans to summary
+        run: cat "${{ steps.plans.outputs.comment_file }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment plan on PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DISPATCH_PR: ${{ github.event.inputs.pr_number }}
+          BRANCH_NAME: ${{ github.event_name == 'pull_request' && github.head_ref || github.event.inputs.branch }}
+          COMMENT_FILE: ${{ steps.plans.outputs.comment_file }}
+        run: |
+          set -euo pipefail
+          pr_number="$PR_NUMBER"
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            pr_number="$DISPATCH_PR"
+          fi
+          if [[ -z "$pr_number" ]]; then
+            echo "Pull request number is missing" >&2
+            exit 1
+          fi
+          branch="$BRANCH_NAME"
+          if [[ -z "$branch" ]]; then
+            branch=$(gh pr view "$pr_number" --json headRefName --jq '.headRefName')
+          fi
+          tmp_comment="$PLAN_DIR/pr-comment.md"
+          printf 'Terraform plans for `%s` (dev/preprod/prod):\n\n' "$branch" > "$tmp_comment"
+          cat "$COMMENT_FILE" >> "$tmp_comment"
+          gh pr comment "$pr_number" --body-file "$tmp_comment"
