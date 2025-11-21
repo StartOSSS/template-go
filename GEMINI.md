@@ -27,6 +27,9 @@ rules to keep the template healthy.
 4. **Implement** – prefer declarative files (YAML/Terraform) and shared helpers (Makefile)
    over bespoke scripts.
 5. **Document** – any new command, env var, or workflow step must be captured in the docs.
+6. **Pre-commit** – run `pre-commit install` once and `pre-commit run --all-files` whenever
+   you touch multiple areas so hooks execute `make fmt`, `make lint`, `make test`, and
+   `make plan` locally.
 
 ## Coding & testing standards
 
@@ -49,5 +52,6 @@ rules to keep the template healthy.
 - [ ] Terraform plans inspected for dev/preprod/prod; ensure generated secrets remain in SM
       and Cloud Run mounts them via Skaffold/GitHub Actions.
 - [ ] CI workflows adjusted when new automation is introduced (step summary + PR comments).
+- [ ] `pre-commit run --all-files` is clean before pushing.
 
 If any item is blocked (e.g., gcloud unavailable), note it explicitly in the PR summary.

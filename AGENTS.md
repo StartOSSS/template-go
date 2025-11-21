@@ -30,6 +30,9 @@ manual steps.
    `terraform/modules/app`) and mount them in Cloud Run via Skaffold workflows.
 5. **Docs** – update README, `docs/`, or workflow docs for any user-facing change.
 6. **Automation** – prefer declarative config (YAML/TOML/terraform) over bespoke scripts.
+7. **Pre-commit** – install hooks via `pre-commit install` and run
+   `pre-commit run --all-files` after large edits. Hooks enforce `make fmt`, `make lint`,
+   `make test`, and `make plan` locally before CI.
 
 ## Coding standards
 

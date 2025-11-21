@@ -1,0 +1,36 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '(^|/).terraform/'
+      - id: end-of-file-fixer
+        exclude: '(^|/).terraform/'
+      - id: check-yaml
+        exclude: '(^|/)(\.terraform/|charts/|\.github/workflows/)'
+      - id: check-added-large-files
+        exclude: '(^|/).terraform/'
+      - id: detect-private-key
+        exclude: '(^|/).terraform/'
+  - repo: local
+    hooks:
+      - id: make-fmt
+        name: make fmt
+        entry: bash -c 'make fmt'
+        language: system
+        pass_filenames: false
+      - id: make-lint
+        name: make lint
+        entry: bash -c 'make lint'
+        language: system
+        pass_filenames: false
+      - id: make-test
+        name: make test
+        entry: bash -c 'make test'
+        language: system
+        pass_filenames: false
+      - id: make-plan
+        name: make plan
+        entry: bash -c 'make plan'
+        language: system
+        pass_filenames: false

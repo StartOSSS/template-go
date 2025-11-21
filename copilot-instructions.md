@@ -13,6 +13,9 @@ repo.
 3. **Reference helpers** – prefer calling existing functions (config loaders, DB helpers,
    observability utilities) and existing Makefile targets instead of writing new ad-hoc
    scripts.
+4. **Remind about hooks** – tell the user to run `pre-commit install` (once) and
+   `pre-commit run --all-files` so the bundled hooks execute `make fmt`, `make lint`,
+   `make test`, and `make plan` before pushing.
 
 ## Coding rules for Copilot
 
@@ -36,6 +39,8 @@ repo.
 - Skaffold/GitHub workflows adjusted + documented if behavior changes.
 - Preview deploy script still slugifies branches, verifies `gcloud`/`skaffold`, mounts
   secrets, and prints the URL.
+- Pre-commit hooks run (`pre-commit run --all-files`) so `make fmt/lint/test/plan` stay
+  green locally.
 
 When suggesting changes, include the relevant commands (`make lint`, `make test`, etc.) in
 the response so contributors remember to run them before committing.

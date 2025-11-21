@@ -26,6 +26,9 @@ as the "how".
   developer + CI job uses the same commands.
 - **Tool bootstrap:** `make bootstrap` installs buf, skaffold, minikube, and
   helm to freeze toolchain versions.
+- **Pre-commit everywhere:** Install hooks via `pre-commit install`. They run
+  `make fmt`, `make lint`, `make test`, and `make plan` on every commit so
+  regressions never reach CI.
 - **Preview automation:** `scripts/preview-deploy.sh` + `make preview-deploy`
   slugify branches, verify gcloud/skaffold, reuse service-account credentials,
   and surface preview URLs without bespoke scripting.

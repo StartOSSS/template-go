@@ -25,7 +25,7 @@ bootstrap: ## Install buf, skaffold, minikube, and helm (uses GOPATH for buf ins
 	command -v helm >/dev/null || curl -fsSL https://get.helm.sh/helm-v3.14.4-linux-amd64.tar.gz | tar -xz --strip-components=1 linux-amd64/helm && install helm /usr/local/bin/helm && rm helm
 
 fmt: ## Run gofmt across the repo (no variables required)
-	gofmt -w $(shell find . -name '*.go' -not -path './gen/*' -not -path './third_party/*')
+	gofmt -w $(shell find . -name '*.go' -not -path './gen/*' -not -path './third_party/*' -not -path '*/.terraform/*')
 
 lint: ## Run Buf, GolangCI-Lint, Terraform linting, and shell/docker linters (requires Docker for tflint)
 	buf lint

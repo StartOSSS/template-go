@@ -46,6 +46,17 @@ make load-test
 make plan
 ```
 
+## Pre-commit hooks
+
+Install and activate the bundled hooks to run `make fmt`, `make lint`, `make test`, and
+`make plan` automatically before every commit:
+
+```bash
+brew install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
 The default configuration lives in `.env.example`. Copy it into `.env` and customise secrets
 before running the stack. Skaffold pushes application + test images to Artifact Registry
 (`GAR_REPOSITORY`) for Cloud Run deploys and loads them straight into Minikube for local

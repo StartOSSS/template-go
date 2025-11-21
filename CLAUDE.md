@@ -36,6 +36,8 @@ modify the template.
 
 Before pushing or opening a PR, run the relevant `make` targets locally:
 
+- `pre-commit install` (one time) and `pre-commit run --all-files` to execute the bundled
+  hooks (`make fmt`, `make lint`, `make test`, `make plan`).
 - `make lint`
 - `make test`
 - `make integration-test` / `make load-test` if runtime behavior changes
@@ -62,5 +64,6 @@ Capture any preview changes by running `make preview-deploy` (needs `gcloud auth
 - [ ] Terraform/Skaffold secrets handled via SM (`--set-secrets DATABASE_URL=...`).
 - [ ] Relevant `make` targets executed locally; CI failures explained or resolved.
 - [ ] Preview + production workflows remain idempotent (Makefile targets safe to re-run).
+- [ ] `pre-commit run --all-files` executed (or hooks confirmed via `git commit`).
 
 Hand back changes only after the checklist is satisfied and CI is expected to pass.
