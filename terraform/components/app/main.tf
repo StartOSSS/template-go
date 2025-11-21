@@ -1,4 +1,11 @@
 terraform {
+  cloud {
+    organization = "tejasc"
+    workspaces {
+      name = "template-go"
+    }
+  }
+
   required_version = ">= 1.6.0"
   required_providers {
     google = {

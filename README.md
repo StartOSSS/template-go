@@ -16,6 +16,7 @@ Minikube) or in CI.
 - ✅ GitOps-ready: Skaffold config for Cloud Run deploys, Terraform modules for IAM + secrets,
   GitHub workflows for linting, testing, integration, load, and release automation
 - ✅ On-demand preview envs via `/deploy` comments in CI or `make preview-deploy` locally
+- ✅ Documented best practices in `docs/best-practices.md` explaining every folder + workflow
 - ✅ Security & supply-chain posture: Dependabot, OSSF Scorecard, osv-scanner, Syft, Grype,
   Gitleaks, container-structure-tests, and NIST SSDF controls baked into CI
 
@@ -48,6 +49,12 @@ The default configuration lives in `.env.example`. Copy it into `.env` and custo
 before running the stack. Skaffold pushes application + test images to Artifact Registry
 (`GAR_REPOSITORY`) for Cloud Run deploys and loads them straight into Minikube for local
 profiles.
+
+## Best practices reference
+
+See `docs/best-practices.md` for the rationale behind each directory, workflow,
+and automation choice baked into this template. Reference it when cloning the
+repo to keep conventions consistent across services.
 
 ## Preview environments
 

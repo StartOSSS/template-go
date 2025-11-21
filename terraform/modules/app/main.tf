@@ -24,7 +24,7 @@ module "service_accounts" {
 }
 
 module "postgres" {
-  source              = "terraform-google-modules/sql-db/google//modules/pgsql"
+  source              = "terraform-google-modules/sql-db/google//modules/postgresql"
   version             = "~> 18.0"
   name                = "${var.environment}-todo"
   project_id          = var.project_id
@@ -34,9 +34,9 @@ module "postgres" {
   database_version    = "POSTGRES_15"
   availability_type   = "ZONAL"
   disk_autoresize     = true
-  user_name           = var.database_user
-  user_password       = var.database_password
-  database_name       = var.database_name
+  user_name     = var.database_user
+  user_password = var.database_password
+  db_name       = var.database_name
   ip_configuration = {
     ipv4_enabled    = true
     private_network = null
@@ -52,14 +52,10 @@ module "secrets" {
   version = "~> 0.4"
 
   project_id = var.project_id
-  secrets = {
-    ("${var.environment}-todo-database-url") = {
-      replication = {
-        automatic = true
-      }
-      secret_data = local.database_url
-    }
-  }
+  secrets = [{
+    name        = "${var.environment}-todo-database-url"
+    secret_data = local.database_url
+  }]
 }
 
 resource "google_project_iam_member" "run_invoker" {
